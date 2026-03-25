@@ -35,6 +35,14 @@ EXAMPLE_DATASETS: Dict[str, Dict[str, str]] = {
         "label": "Iris Dataset",
         "filename": "iris_dataset.csv",
     },
+    "cars": {
+        "label": "Cars Dataset",
+        "filename": "cars.csv",
+    },
+    "patients": {
+        "label": "Patients Dataset",
+        "filename": "patients.csv",
+    },
 }
 
 ALLOWED_FUNCTIONS = {
@@ -373,6 +381,7 @@ def index():
     variable_options: List[str] = []
     selected_y_column = ""
     selected_x_columns: List[str] = []
+    normalize_x_active = False
 
     if request.method == "POST":
         form_action = request.form.get("form_action", "load_data").strip().lower()
@@ -392,6 +401,7 @@ def index():
         selected_x_columns = [
             col.strip() for col in request.form.getlist("x_columns") if col.strip()
         ]
+        normalize_x_active = request.form.get("normalize_x") == "on"
 
         upload = request.files.get("csv_file")
         raw_table_bytes = None
@@ -499,8 +509,22 @@ def index():
 
                     x_df = df[selected_x_columns]
                     y_series = df[selected_y_column]
-                    x_data = x_df.to_numpy(dtype=float)
+                    x_data_raw = x_df.to_numpy(dtype=float)
                     y_data = y_series.to_numpy(dtype=float)
+
+                    normalization_means = None
+                    normalization_scales = None
+                    if normalize_x_active:
+                        normalization_means = np.mean(x_data_raw, axis=0)
+                        std_values = np.std(x_data_raw, axis=0)
+                        normalization_scales = np.where(
+                            np.isclose(std_values, 0.0),
+                            1.0,
+                            std_values,
+                        )
+                        x_data = (x_data_raw - normalization_means) / normalization_scales
+                    else:
+                        x_data = x_data_raw
 
                     basis_exprs, x_symbols = parse_basis_expressions(
                         model_text=model_text,
@@ -538,7 +562,7 @@ def index():
 
                     plot_data = None
                     if x_data.shape[1] == 1:
-                        x_values = x_data[:, 0].astype(float)
+                        x_values = x_data_raw[:, 0].astype(float)
                         y_values = y_data.astype(float)
                         x_min = float(np.min(x_values))
                         x_max = float(np.max(x_values))
@@ -549,10 +573,13 @@ def index():
                             x_plot = np.linspace(x_min, x_max, 200)
 
                         x_plot_matrix = x_plot.reshape(-1, 1)
+                        x_plot_eval = x_plot_matrix
+                        if normalize_x_active:
+                            x_plot_eval = (x_plot_matrix - normalization_means) / normalization_scales
                         design_plot = build_design_matrix(
                             basis_exprs=basis_exprs,
                             x_symbols=x_symbols,
-                            x_data=x_plot_matrix,
+                            x_data=x_plot_eval,
                         )
                         y_plot = design_plot @ coefficients_numeric
 
@@ -582,6 +609,7 @@ def index():
                         "rmse": rmse_display,
                         "r2": r2_display,
                         "adjusted_r2": adjusted_r2_display,
+                        "normalization_label": "Sí (z-score)" if normalize_x_active else "No",
                         "singular_values": ", ".join(f"{sv:.6g}" for sv in singular_values),
                     }
             except ValueError as exc:
@@ -603,6 +631,7 @@ def index():
         variable_options=variable_options,
         selected_y_column=selected_y_column,
         selected_x_columns=selected_x_columns,
+        normalize_x_active=normalize_x_active,
         table_preview_html=table_preview_html,
         info_message=info_message,
         error_message=error_message,

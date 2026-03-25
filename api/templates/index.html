@@ -219,6 +219,26 @@
       flex-wrap: wrap;
     }
 
+    .variable-options-row {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .inline-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .inline-check input {
+      margin: 0;
+    }
+
     .model-label {
       margin-bottom: 0;
     }
@@ -617,6 +637,17 @@
               </div>
             </div>
           </div>
+          <div class="variable-options-row">
+            <label class="inline-check" for="normalize_x">
+              <input
+                id="normalize_x"
+                name="normalize_x"
+                type="checkbox"
+                {% if normalize_x_active %}checked{% endif %}
+              >
+              Normalizar variables independientes (z-score)
+            </label>
+          </div>
         </div>
         <div id="mapping_preview" class="variable-panel" style="margin-top: 10px;">
           <h3 style="margin: 0 0 8px 0;">Mapeo de variables</h3>
@@ -698,6 +729,10 @@
         <div class="stat">
           <small>R² ajustado</small>
           <strong>{{ result.adjusted_r2 }}</strong>
+        </div>
+        <div class="stat">
+          <small>Normalización X</small>
+          <strong>{{ result.normalization_label }}</strong>
         </div>
         <div class="stat">
           <small>Fuente CSV</small>
