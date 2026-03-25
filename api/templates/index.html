@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Regresión lineal por mínimos cuadrados</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #eef4fb;
+      --panel: #f9fcff;
+      --ink: #16293f;
+      --accent: #2f6fb5;
+      --accent-2: #85b9ff;
+      --border: #cfdeef;
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      font-size: 0.95rem;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 12%, #ffffff 0%, transparent 36%),
+        linear-gradient(150deg, #e8f0fb 0%, var(--bg) 45%, #eaf3ff 100%);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1060px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 10px 24px rgba(47, 111, 181, 0.1);
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      font-size: clamp(1.4rem, 2.4vw, 2rem);
+      letter-spacing: 0.02em;
+    }
+
+    .card > h2 {
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+
+    .equation-title {
+      margin-bottom: 6px !important;
+    }
+
+    .report-mapping-title {
+      margin-bottom: 14px !important;
+    }
+
+    p {
+      margin-top: 0;
+      line-height: 1.5;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 6px;
+      font-size: inherit;
+    }
+
+    input[type="file"],
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px 12px;
+      font-size: inherit;
+      color: var(--ink);
+    }
+
+    select[multiple] {
+      padding-top: 6px;
+      padding-bottom: 6px;
+    }
+
+    textarea {
+      resize: vertical;
+      font-family: "SF Mono", "Menlo", monospace;
+    }
+
+    code {
+      display: inline-block;
+      background: #eef2f6;
+      border: 1px solid #d9e1ea;
+      border-radius: 6px;
+      padding: 1px 6px;
+      font-family: "SF Mono", "Menlo", "Consolas", monospace;
+      font-size: 0.85em;
+      color: #1f3550;
+    }
+
+    .help {
+      margin-top: 5px;
+      font-size: inherit;
+      color: #4a5b70;
+    }
+
+    .notice {
+      margin-top: 12px;
+      color: #1f3f63;
+    }
+
+    .variable-panel {
+      margin-top: 12px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .collapsible-card {
+      margin-top: 12px;
+    }
+
+    .collapsible-card > summary {
+      list-style: none;
+      cursor: pointer;
+      font-weight: 700;
+      background: #d3e4fb;
+      border: 1px solid #a9c5eb;
+      color: #18395e;
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+    }
+
+    .collapsible-card > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .collapsible-card > summary::after {
+      content: "+";
+      font-size: 1.05rem;
+      color: #355d88;
+      line-height: 1;
+    }
+
+    .collapsible-card[open] > summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    .collapsible-card[open] > summary::after {
+      content: "−";
+    }
+
+    .collapsible-body {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-top: 0;
+      border-radius: 0 0 10px 10px;
+      padding: 10px;
+    }
+
+    .action-row {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .manual-csv-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    @media (max-width: 760px) {
+      .manual-csv-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .model-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+
+    .model-label {
+      margin-bottom: 0;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), #4f89c8);
+      color: #fff;
+      font-weight: 700;
+      font-size: inherit;
+      padding: 11px 18px;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease;
+      margin-top: 12px;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    .error {
+      border-left: 4px solid #bb2f2f;
+      background: #ffecec;
+      color: #651616;
+      padding: 10px 12px;
+      border-radius: 8px;
+    }
+
+    .equation {
+      overflow-x: auto;
+      padding: 10px 0;
+      font-size: 1.1rem;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .stat {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .stat-wide {
+      grid-column: 1 / -1;
+    }
+
+    .stat small {
+      display: block;
+      font-size: inherit;
+      color: #4b6078;
+      margin-bottom: 4px;
+    }
+
+    .stat strong {
+      font-weight: 500;
+      color: #000;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: inherit;
+    }
+
+    th, td {
+      border-bottom: 1px solid #e5edf7;
+      padding: 8px 10px;
+      text-align: left;
+    }
+
+    th {
+      background: #eaf2fc;
+      color: #223d5c;
+      font-weight: 700;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 8px;
+      background: #edf4ff;
+      border: 1px solid #c9ddfb;
+      border-radius: 999px;
+      font-size: inherit;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+
+    .file-input-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+      padding: 0;
+      margin: -1px;
+    }
+
+    .file-picker {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    .file-trigger {
+      margin-top: 0;
+      padding: 9px 14px;
+      border-radius: 10px;
+      background: #d3e4fb;
+      border: 1px solid #a9c5eb;
+      color: #18395e;
+      font-weight: 700;
+    }
+
+    .file-name {
+      font-size: inherit;
+      color: #2a4564;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      width: 320px;
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .plot-wrap {
+      position: relative;
+      width: 100%;
+      min-height: 280px;
+      max-height: 420px;
+    }
+
+    .copyright {
+      margin-top: 14px;
+      text-align: center;
+      font-size: inherit;
+      color: #4b6078;
+    }
+
+    .copyright a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .report-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      margin-top: 0;
+    }
+
+    #report-content {
+      display: grid;
+      gap: 18px;
+    }
+
+    .report-print-btn {
+      border: 1px solid #99d5cf;
+      border-radius: 10px;
+      padding: 0.58rem 1rem;
+      background: linear-gradient(135deg, #e8f8f5, #f3fbfa);
+      color: #0f766e;
+      font-size: 0.96rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0;
+    }
+
+    .report-print-btn:hover {
+      background: linear-gradient(135deg, #ddf4f0, #eefaf8);
+    }
+
+    .print-only {
+      display: none;
+    }
+
+    .report-table-print {
+      display: none;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+
+      .no-print,
+      .entry-card {
+        display: none !important;
+      }
+
+      .container {
+        max-width: 100%;
+        margin: 0;
+        gap: 12px;
+      }
+
+      #report-content {
+        display: block !important;
+      }
+
+      #report-content > * {
+        margin-top: 12px;
+      }
+
+      #report-content > *:first-child {
+        margin-top: 0;
+      }
+
+      .card {
+        box-shadow: none;
+        page-break-inside: avoid;
+        break-inside: avoid-page;
+      }
+
+      .print-only {
+        display: block;
+      }
+
+      .report-main-title {
+        margin: 0 0 8px;
+        font-size: 1.65rem;
+        line-height: 1.15;
+      }
+
+      #report-content .card > h2 {
+        font-size: 1.08rem;
+      }
+
+      .report-table-print:not(.include-in-print) {
+        display: none !important;
+      }
+
+      .report-table-print.include-in-print {
+        display: block !important;
+      }
+
+      #plot_section {
+        page-break-inside: avoid;
+        break-inside: avoid-page;
+      }
+
+      #plot_section .plot-wrap {
+        min-height: 320px;
+        max-height: none;
+        height: 320px;
+      }
+
+      #plot_section canvas {
+        width: 100% !important;
+        height: 320px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card entry-card">
+      <h1>Regresión lineal por mínimos cuadrados</h1>
+      <p>
+        Sube un archivo CSV numérico, elige un dataset de ejemplo o captura manualmente los datos.
+        Después elige explícitamente las variables independientes \(x_i\) y la variable dependiente \(y\).
+        Las funciones base son obligatorias para definir la estructura del modelo,
+        pero puedes usar modelos predefinidos para autocompletar la lista de funciones.
+      </p>
+      <form method="post" enctype="multipart/form-data">
+        <textarea id="csv_cache" name="csv_cache" hidden>{{ csv_cache }}</textarea>
+        <input
+          id="csv_filename_cache"
+          name="csv_filename_cache"
+          type="hidden"
+          value="{{ csv_filename_cache }}"
+        >
+        <div class="grid">
+          <div>
+            <label for="csv_file">Archivo CSV</label>
+            <input id="csv_file" class="file-input-hidden" name="csv_file" type="file" accept=".csv,.xlsx,.xls,.xlsm">
+            <div class="file-picker">
+              <button id="csv_file_trigger" type="button" class="file-trigger">Elegir archivo</button>
+              <span id="csv_file_name" class="file-name">
+                {% if csv_filename_cache and csv_filename_cache.strip() %}
+                {{ csv_filename_cache }}
+                {% else %}
+                Ningún archivo seleccionado
+                {% endif %}
+              </span>
+            </div>
+            <label for="use_csv_text" style="margin-top: 10px; font-weight: 600;">
+              <input
+                id="use_csv_text"
+                name="use_csv_text"
+                type="checkbox"
+                {% if use_csv_text_active %}checked{% endif %}
+              >
+              Captura manual
+            </label>
+          </div>
+          <div>
+            <label for="example_dataset">Dataset de ejemplo</label>
+            <select id="example_dataset" name="example_dataset">
+              <option value="">Ninguno</option>
+              {% for example_key, example_data in example_datasets.items() %}
+              <option
+                value="{{ example_key }}"
+                {% if selected_example_dataset == example_key %}selected{% endif %}
+              >
+                {{ example_data.label }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div
+          id="csv_text_container"
+          style="margin-top: 12px;"
+          {% if not use_csv_text_active %}hidden{% endif %}
+        >
+          <label for="csv_text">Contenido CSV</label>
+          <div class="manual-csv-row">
+            <textarea id="csv_text" name="csv_text" rows="5" spellcheck="false" placeholder="Ejemplo:
+1, 2, 5
+2, 1, 6
+3, 0, 7">{{ csv_text }}</textarea>
+            <button type="submit" name="form_action" value="load_data" class="file-trigger">Cargar datos</button>
+          </div>
+          <div class="help">
+            Si el primer valor no es numérico, se asume que la primera fila contiene los encabezados; en caso contrario, se nombran automáticamente las columnas como <code>col1</code>, <code>col2</code>, etc.
+          </div>
+        </div>
+
+        {% if table_preview_html %}
+        <details id="data_table_details" class="collapsible-card">
+          <summary>Tabla de datos</summary>
+          <div class="collapsible-body">
+            {{ table_preview_html | safe }}
+          </div>
+        </details>
+        {% endif %}
+
+        {% if info_message %}
+        <div class="notice">{{ info_message }}</div>
+        {% endif %}
+
+        {% if variable_options %}
+        <div class="variable-panel">
+          <div class="grid">
+            <div>
+              <label for="y_column">Variable dependiente \(y\)</label>
+              <select id="y_column" name="y_column">
+                {% for col in variable_options %}
+                <option value="{{ col }}" {% if selected_y_column == col %}selected{% endif %}>{{ col }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="x_columns">Variables independientes \(x_i\)</label>
+              <select
+                id="x_columns"
+                name="x_columns"
+                multiple
+                size="{{ (variable_options|length - 1) if (variable_options|length > 1) else 1 }}"
+              >
+                {% for col in variable_options %}
+                <option value="{{ col }}" {% if col in selected_x_columns %}selected{% endif %}>{{ col }}</option>
+                {% endfor %}
+              </select>
+              <div class="help">
+                Usa Ctrl/Cmd + clic para seleccionar varias columnas.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="mapping_preview" class="variable-panel" style="margin-top: 10px;">
+          <h3 style="margin: 0 0 8px 0;">Mapeo de variables</h3>
+          <div id="mapping_preview_tags">
+            {% for col in selected_x_columns %}
+            <span class="tag">\( x_{ {{ loop.index }} } \) &larr; {{ col }}</span>
+            {% endfor %}
+            {% if selected_y_column %}
+            <span class="tag">\( y \) &larr; {{ selected_y_column }}</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top: 12px;">
+          <div>
+            <div class="model-header">
+              <label class="model-label" for="model_text">Funciones base del modelo</label>
+            </div>
+            <textarea id="model_text" name="model_text" rows="1" spellcheck="false">{{ model_text }}</textarea>
+            <div class="help">
+              Define las funciones base con coma, salto de línea o punto y coma.
+            </div>
+            <div class="help">
+              Ejemplo: <code>1, x1, x2, x1*x2, x1^2, exp(x1-x2), sin(2*pi*x2)</code>
+            </div>
+            <div class="help">
+              Si solo existe una variable independiente, puedes usar <code>x1</code> o <code>x</code>.
+            </div>
+          </div>
+          <div>
+            <label for="predefined_model">Modelo predefinido</label>
+            <select id="predefined_model" name="predefined_model">
+              <option value="" data-expression="" {% if not selected_model %}selected{% endif %}>Ninguno</option>
+              {% for model_name, model_expression in predefined_models.items() %}
+              <option
+                value="{{ model_name }}"
+                data-expression="{{ model_expression }}"
+                {% if selected_model == model_name %}selected{% endif %}
+              >
+                {{ model_name }}
+              </option>
+              {% endfor %}
+            </select>
+            <div class="help">
+              Si eliges uno, se copiará su estructura a funciones base.
+            </div>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button type="submit" name="form_action" value="calculate" style="margin-top: 0;">Calcular modelo</button>
+        </div>
+        {% endif %}
+      </form>
+    </section>
+
+    {% if error_message %}
+    <section class="card error">
+      <strong>Error:</strong> {{ error_message }}
+    </section>
+    {% endif %}
+
+    {% if result %}
+    <div id="report-content">
+    <h1 class="print-only report-main-title">Reporte de regresión lineal</h1>
+    <section class="card">
+      <h2 class="equation-title">Ecuación del modelo</h2>
+      <div class="equation">$$ {{ result.equation_latex }} $$</div>
+
+      <div class="stats">
+        <div class="stat">
+          <small>RMSE</small>
+          <strong>{{ result.rmse }}</strong>
+        </div>
+        <div class="stat">
+          <small>R²</small>
+          <strong>{{ result.r2 }}</strong>
+        </div>
+        <div class="stat">
+          <small>R² ajustado</small>
+          <strong>{{ result.adjusted_r2 }}</strong>
+        </div>
+        <div class="stat">
+          <small>Fuente CSV</small>
+          <strong>{{ result.csv_source }}</strong>
+        </div>
+        <div class="stat">
+          <small>Rango de la matriz</small>
+          <strong>{{ result.rank }}</strong>
+        </div>
+        <div class="stat stat-wide">
+          <small>Valores singulares</small>
+          <strong>{{ result.singular_values }}</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="card print-only">
+      <h2 class="report-mapping-title">Mapeo de variables</h2>
+      <div>
+        {% for m in result.feature_map %}
+        <span class="tag">\( {{ m.symbol_latex }} \) &larr; {{ m.column }}</span>
+        {% endfor %}
+        <span class="tag">\( y \) &larr; {{ result.target_column }}</span>
+      </div>
+    </section>
+
+    {% if table_preview_html %}
+    <section id="report_data_table" class="card print-only report-table-print">
+      <h2>Tabla de datos</h2>
+      {{ table_preview_html | safe }}
+    </section>
+    {% endif %}
+
+    {% if result.plot_data %}
+    <div id="show_plot_row" class="no-print">
+      <button id="show_plot_btn" type="button" class="file-trigger">Mostrar gráfica</button>
+    </div>
+    <section id="plot_section" class="card" hidden>
+      <h2>Gráfica del modelo</h2>
+      <div class="plot-wrap">
+        <canvas id="model_plot"></canvas>
+      </div>
+    </section>
+    {% endif %}
+
+    <div class="report-actions no-print">
+      <button class="report-print-btn" type="button" onclick="printReportPdf()">
+        Imprimir reporte PDF
+      </button>
+    </div>
+
+    </div>
+    {% endif %}
+
+    {% if result and result.plot_data %}
+    <script id="plot_data" type="application/json">{{ result.plot_data | tojson }}</script>
+    {% endif %}
+  </main>
+  <footer class="copyright">
+    &copy; 2025, <a href="https://isantosruiz.github.io/home/" target="_blank" rel="noopener noreferrer">Ildeberto de los Santos Ruiz</a>
+  </footer>
+
+  <script>
+    function syncReportPrintState() {
+      const details = document.getElementById('data_table_details');
+      const reportTable = document.getElementById('report_data_table');
+      if (!reportTable) {
+        return;
+      }
+      const includeTable = Boolean(details && details.open);
+      reportTable.classList.toggle('include-in-print', includeTable);
+    }
+
+    function printReportPdf() {
+      syncReportPrintState();
+      const doPrint = () => window.print();
+      if (window.MathJax && typeof window.MathJax.typesetPromise === "function") {
+        window.MathJax.typesetPromise().then(doPrint).catch(doPrint);
+        return;
+      }
+      doPrint();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const select = document.getElementById('predefined_model');
+      const modelTextarea = document.getElementById('model_text');
+      const useCsvText = document.getElementById('use_csv_text');
+      const csvTextContainer = document.getElementById('csv_text_container');
+      const csvCacheTextarea = document.getElementById('csv_cache');
+      const csvFileInput = document.getElementById('csv_file');
+      const csvFileTrigger = document.getElementById('csv_file_trigger');
+      const csvFileName = document.getElementById('csv_file_name');
+      const csvFilenameCache = document.getElementById('csv_filename_cache');
+      const exampleDatasetSelect = document.getElementById('example_dataset');
+      const yColumnSelect = document.getElementById('y_column');
+      const xColumnsSelect = document.getElementById('x_columns');
+      const mappingPreview = document.getElementById('mapping_preview');
+      const mappingPreviewTags = document.getElementById('mapping_preview_tags');
+      const showPlotButton = document.getElementById('show_plot_btn');
+      const showPlotRow = document.getElementById('show_plot_row');
+      const plotSection = document.getElementById('plot_section');
+      const dataTableDetails = document.getElementById('data_table_details');
+      const dataForm = document.querySelector('form[method="post"]');
+
+      const escapeHtml = (value) => {
+        return String(value)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('\"', '&quot;')
+          .replaceAll("'", '&#39;');
+      };
+
+      const submitForLoadData = () => {
+        if (!dataForm) {
+          return;
+        }
+
+        const staleAction = dataForm.querySelector(
+          'input[name="form_action"][data-auto="1"]'
+        );
+        if (staleAction) {
+          staleAction.remove();
+        }
+
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'form_action';
+        actionInput.value = 'load_data';
+        actionInput.dataset.auto = '1';
+        dataForm.appendChild(actionInput);
+
+        if (typeof dataForm.requestSubmit === 'function') {
+          dataForm.requestSubmit();
+        } else {
+          dataForm.submit();
+        }
+      };
+
+      if (dataTableDetails) {
+        dataTableDetails.addEventListener('toggle', syncReportPrintState);
+      }
+      window.addEventListener('beforeprint', syncReportPrintState);
+      syncReportPrintState();
+
+      const clearNonManualSources = () => {
+        if (exampleDatasetSelect) {
+          exampleDatasetSelect.value = '';
+        }
+        if (csvFileInput) {
+          csvFileInput.value = '';
+        }
+        if (csvFilenameCache) {
+          csvFilenameCache.value = '';
+        }
+        if (csvFileName) {
+          csvFileName.textContent = 'Ningún archivo seleccionado';
+        }
+        if (csvCacheTextarea) {
+          csvCacheTextarea.value = '';
+        }
+      };
+
+      const deactivateManualCapture = () => {
+        if (!useCsvText) {
+          return;
+        }
+        if (useCsvText.checked) {
+          useCsvText.checked = false;
+        }
+        useCsvText.dispatchEvent(new Event('change'));
+      };
+
+      if (select && modelTextarea) {
+        select.addEventListener('change', () => {
+          const option = select.options[select.selectedIndex];
+          const expression = option.dataset.expression || '';
+          modelTextarea.value = expression;
+        });
+      }
+
+      if (useCsvText && csvTextContainer) {
+        const syncCsvTextVisibility = () => {
+          if (useCsvText.checked) {
+            csvTextContainer.removeAttribute('hidden');
+          } else {
+            csvTextContainer.setAttribute('hidden', 'hidden');
+          }
+        };
+
+        useCsvText.addEventListener('change', () => {
+          if (useCsvText.checked) {
+            clearNonManualSources();
+          }
+          syncCsvTextVisibility();
+        });
+
+        syncCsvTextVisibility();
+      }
+
+      if (csvFileInput && csvFileTrigger && csvFileName && csvFilenameCache) {
+        csvFileTrigger.addEventListener('click', () => {
+          csvFileInput.click();
+        });
+
+        csvFileInput.addEventListener('change', () => {
+          const selectedFile = csvFileInput.files && csvFileInput.files[0];
+          if (selectedFile) {
+            deactivateManualCapture();
+            csvFileName.textContent = selectedFile.name;
+            csvFilenameCache.value = selectedFile.name;
+            if (exampleDatasetSelect) {
+              exampleDatasetSelect.value = '';
+            }
+            if (csvCacheTextarea) {
+              csvCacheTextarea.value = '';
+            }
+            submitForLoadData();
+          }
+        });
+      }
+
+      if (exampleDatasetSelect) {
+        exampleDatasetSelect.addEventListener('change', () => {
+          if (exampleDatasetSelect.value) {
+            deactivateManualCapture();
+            if (csvCacheTextarea) {
+              csvCacheTextarea.value = '';
+            }
+            if (csvFileInput) {
+              csvFileInput.value = '';
+            }
+            if (csvFilenameCache) {
+              csvFilenameCache.value = '';
+            }
+            if (csvFileName) {
+              csvFileName.textContent = 'Ningún archivo seleccionado';
+            }
+            submitForLoadData();
+          }
+        });
+      }
+
+      if (yColumnSelect && xColumnsSelect) {
+        const syncMappingPreview = () => {
+          if (!mappingPreview || !mappingPreviewTags) {
+            return;
+          }
+
+          const selectedX = Array.from(xColumnsSelect.options)
+            .filter((option) => option.selected && !option.hidden && !option.disabled)
+            .map((option) => option.value);
+          const yValue = yColumnSelect.value;
+
+          const xTags = selectedX.map((col, index) => (
+            `<span class="tag">\\( x_{${index + 1}} \\) &larr; ${escapeHtml(col)}</span>`
+          ));
+          const yTag = yValue
+            ? `<span class="tag">\\( y \\) &larr; ${escapeHtml(yValue)}</span>`
+            : '';
+
+          mappingPreviewTags.innerHTML = `${xTags.join('')}${yTag}`;
+
+          if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+            window.MathJax.typesetPromise([mappingPreviewTags]).catch(() => {});
+          }
+        };
+
+        const updateXColumnsSize = () => {
+          const visibleCount = Array.from(xColumnsSelect.options).filter(
+            (option) => !option.hidden
+          ).length;
+          xColumnsSelect.size = Math.max(1, visibleCount);
+        };
+
+        const syncVariableSelection = () => {
+          const yValue = yColumnSelect.value;
+          Array.from(xColumnsSelect.options).forEach((option) => {
+            const isTargetColumn = option.value === yValue;
+            option.disabled = isTargetColumn;
+            option.hidden = isTargetColumn;
+            if (isTargetColumn) {
+              option.selected = false;
+            }
+          });
+          updateXColumnsSize();
+          syncMappingPreview();
+        };
+
+        yColumnSelect.addEventListener('change', syncVariableSelection);
+        xColumnsSelect.addEventListener('change', syncMappingPreview);
+        syncVariableSelection();
+      }
+
+      const plotDataElement = document.getElementById('plot_data');
+      const modelPlotCanvas = document.getElementById('model_plot');
+      if (
+        plotDataElement &&
+        modelPlotCanvas &&
+        showPlotButton &&
+        plotSection &&
+        window.Chart
+      ) {
+        let plotRendered = false;
+
+        const renderPlot = () => {
+          if (plotRendered) {
+            return;
+          }
+
+          const plotData = JSON.parse(plotDataElement.textContent);
+          const context = modelPlotCanvas.getContext('2d');
+          new Chart(context, {
+            type: 'scatter',
+            data: {
+              datasets: [
+                {
+                  type: 'scatter',
+                  label: 'Datos observados',
+                  data: plotData.observed,
+                  order: 2,
+                  pointRadius: 3,
+                  pointHoverRadius: 4,
+                  pointBackgroundColor: 'rgba(245, 165, 36, 0.45)',
+                  pointBorderColor: 'rgba(145, 97, 17, 0.65)',
+                  pointBorderWidth: 1,
+                },
+                {
+                  type: 'line',
+                  label: 'Modelo ajustado',
+                  data: plotData.fitted,
+                  parsing: false,
+                  order: 1,
+                  pointRadius: 0,
+                  borderWidth: 2,
+                  borderColor: '#0b6e4f',
+                  tension: 0,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: {
+                  type: 'linear',
+                  title: {
+                    display: true,
+                    text: plotData.x_label,
+                  },
+                },
+                y: {
+                  title: {
+                    display: true,
+                    text: plotData.y_label,
+                  },
+                },
+              },
+            },
+          });
+
+          plotRendered = true;
+        };
+
+        showPlotButton.addEventListener('click', () => {
+          plotSection.removeAttribute('hidden');
+          renderPlot();
+          if (showPlotRow) {
+            showPlotRow.setAttribute('hidden', 'hidden');
+          } else {
+            showPlotButton.setAttribute('hidden', 'hidden');
+          }
+        });
+      }
+
+    });
+  </script>
+</body>
+</html>
